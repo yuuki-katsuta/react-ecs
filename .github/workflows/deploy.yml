@@ -1,0 +1,69 @@
+# .github/workflows/deploy.yml
+name: Deploy to Amazon ECS
+
+on:
+  push:
+    branches: ["main"]
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }} # GitHub Secretsから取得
+  ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }} # GitHub Secretsから取得
+  ECS_SERVICE: MY_ECS_SERVICE # 実際のサービス名に置き換えてください
+  ECS_CLUSTER: MY_ECS_CLUSTER # 実際のクラスター名に置き換えてください
+  ECS_TASK_DEFINITION: MY_ECS_TASK_DEFINITION # タスク定義ファイルのパスに置き換えてください
+  CONTAINER_NAME: MY_CONTAINER_NAME # タスク定義のコンテナ名に置き換えてください
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set environment variables for build
+        run: |
+          echo "VITE_MUI_LICENSE_KEY=${{ secrets.VITE_MUI_LICENSE_KEY }}" >> .env.production
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # ビルド時に環境変数を使用してDockerイメージをビルド
+          docker buildx build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          wait-for-service-stability: true
