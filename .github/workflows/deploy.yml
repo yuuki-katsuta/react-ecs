@@ -6,12 +6,14 @@ on:
     branches: ["main"]
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }} # GitHub Secretsから取得
-  ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }} # GitHub Secretsから取得
-  ECS_SERVICE: MY_ECS_SERVICE # 実際のサービス名に置き換えてください
-  ECS_CLUSTER: MY_ECS_CLUSTER # 実際のクラスター名に置き換えてください
-  ECS_TASK_DEFINITION: MY_ECS_TASK_DEFINITION # タスク定義ファイルのパスに置き換えてください
-  CONTAINER_NAME: MY_CONTAINER_NAME # タスク定義のコンテナ名に置き換えてください
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }}
+  ECS_SERVICE: next-app-service
+  ECS_CLUSTER: react-ecs-cluster
+  ECS_TASK_DEFINITION: MY_ECS_TASK_DEFINITION # タスク定義ファイルのパス
+  CONTAINER_NAME: react-ecs-nginx
 
 permissions:
   contents: read
@@ -39,7 +41,7 @@ jobs:
 
       - name: Set environment variables for build
         run: |
-          echo "VITE_MUI_LICENSE_KEY=${{ secrets.VITE_MUI_LICENSE_KEY }}" >> .env.production
+          echo "VITE_SAMPLE_KEY=${{ secrets.VITE_SAMPLE_KEY }}" >> .env.production
 
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
@@ -48,7 +50,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           # ビルド時に環境変数を使用してDockerイメージをビルド
-          docker buildx build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
@@ -56,7 +58,7 @@ jobs:
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          task-definition: task-definition.json
           container-name: ${{ env.CONTAINER_NAME }}
           image: ${{ steps.build-image.outputs.image }}
 
