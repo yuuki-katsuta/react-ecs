@@ -39,9 +39,9 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Set environment variables for build
-        run: |
-          echo "VITE_SAMPLE_KEY=${{ secrets.VITE_SAMPLE_KEY }}" >> .env.production
+      # - name: Set environment variables for build
+      #   run: |
+      #     echo "VITE_SAMPLE_KEY=${{ secrets.VITE_SAMPLE_KEY }}" >> .env.production
 
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
@@ -49,7 +49,6 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # ビルド時に環境変数を使用してDockerイメージをビルド
           docker build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
