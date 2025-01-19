@@ -4,6 +4,7 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "256",
   "memory": "512",
+  "executionRoleArn": "ecsTaskExecutionRole",
   "containerDefinitions": [
     {
       "name": "react-ecs-nginx",
