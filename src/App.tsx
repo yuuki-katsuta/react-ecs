@@ -2,6 +2,7 @@ import { useState } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import "./App.css";
+import { config } from "./config";
 
 function App() {
   const [count, setCount] = useState(0);
@@ -28,7 +29,7 @@ function App() {
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
       </p>
-      <p>テスト {import.meta.env.VITE_SAMPLE_KEY}</p>
+      <p>SAMPLE_KEY: {config.SAMPLE_KEY}</p>
     </>
   );
 }
